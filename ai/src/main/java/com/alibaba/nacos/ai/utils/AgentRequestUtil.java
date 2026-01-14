@@ -17,7 +17,10 @@
 package com.alibaba.nacos.ai.utils;
 
 import com.alibaba.nacos.ai.form.a2a.admin.AgentCardForm;
+import com.alibaba.nacos.api.ai.constant.AiConstants;
+import com.alibaba.nacos.api.ai.model.a2a.AgentCapabilities;
 import com.alibaba.nacos.api.ai.model.a2a.AgentCard;
+import com.alibaba.nacos.api.ai.remote.request.AbstractAgentRequest;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.exception.runtime.NacosDeserializationException;
@@ -27,6 +30,8 @@ import com.alibaba.nacos.common.utils.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * Agent and AgentCard request util.
@@ -48,16 +53,53 @@ public class AgentRequestUtil {
         try {
             AgentCard result = JacksonUtils.toObj(agentCardForm.getAgentCard(), new TypeReference<>() {
             });
-            validateAgentCardField("name", result.getName());
-            validateAgentCardField("description", result.getDescription());
-            validateAgentCardField("version", result.getVersion());
-            validateAgentCardField("protocolVersion", result.getProtocolVersion());
+            validateAgentCard(result);
             return result;
         } catch (NacosDeserializationException e) {
             LOGGER.error(String.format("Deserialize %s from %s failed, ", AgentCard.class.getSimpleName(),
                     agentCardForm.getAgentCard()), e);
             throw new NacosApiException(NacosApiException.INVALID_PARAM, ErrorCode.PARAMETER_VALIDATE_ERROR,
                     "agentCard is invalid. Can't be parsed.");
+        }
+    }
+    
+    /**
+     * Validate agent card is legal.
+     *
+     * @param agentCard agent card
+     * @throws NacosApiException if agent card is illegal.
+     */
+    public static void validateAgentCard(AgentCard agentCard) throws NacosApiException {
+        validateAgentCardField("name", agentCard.getName());
+        validateAgentCardField("version", agentCard.getVersion());
+        validateAgentCardField("protocolVersion", agentCard.getProtocolVersion());
+        validateAgentCardField("preferredTransport", agentCard.getPreferredTransport());
+        validateAgentCardField("url", agentCard.getUrl());
+        if (null == agentCard.getDescription()) {
+            agentCard.setDescription(StringUtils.EMPTY);
+        }
+        if (null == agentCard.getCapabilities()) {
+            agentCard.setCapabilities(new AgentCapabilities());
+        }
+        if (null == agentCard.getDefaultInputModes()) {
+            agentCard.setDefaultInputModes(List.of());
+        }
+        if (null == agentCard.getDefaultOutputModes()) {
+            agentCard.setDefaultOutputModes(List.of());
+        }
+        if (null == agentCard.getSkills()) {
+            agentCard.setSkills(List.of());
+        }
+    }
+    
+    /**
+     * If request contains valid namespaceId, do nothing. If not, fill default namespaceId.
+     *
+     * @param request agent request
+     */
+    public static void fillNamespaceId(AbstractAgentRequest request) {
+        if (StringUtils.isEmpty(request.getNamespaceId())) {
+            request.setNamespaceId(AiConstants.A2a.A2A_DEFAULT_NAMESPACE);
         }
     }
     

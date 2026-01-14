@@ -17,11 +17,15 @@
 package com.alibaba.nacos.ai.utils;
 
 import com.alibaba.nacos.ai.constant.Constants;
-import com.alibaba.nacos.ai.form.a2a.admin.AgentDetailForm;
+import com.alibaba.nacos.api.ai.constant.AiConstants;
 import com.alibaba.nacos.api.ai.model.a2a.AgentCard;
+import com.alibaba.nacos.api.ai.model.a2a.AgentCardBasicInfo;
 import com.alibaba.nacos.api.ai.model.a2a.AgentCardDetailInfo;
 import com.alibaba.nacos.api.ai.model.a2a.AgentCardVersionInfo;
+import com.alibaba.nacos.api.ai.model.a2a.AgentInterface;
 import com.alibaba.nacos.api.ai.model.a2a.AgentVersionDetail;
+import com.alibaba.nacos.api.naming.pojo.Instance;
+import com.alibaba.nacos.common.utils.StringUtils;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -35,30 +39,7 @@ import java.util.Collections;
  */
 public class AgentCardUtil {
     
-    /**
-     * Build Agent Card from Agent Detail form.
-     *
-     * @param form agent detail form
-     * @return Agent Card
-     */
-    public static AgentCard buildAgentCard(AgentDetailForm form) {
-        AgentCard agentCard = new AgentCard();
-        injectAgentCardInfo(agentCard, form);
-        return agentCard;
-    }
-    
-    /**
-     * Build Agent Card Storage Info from Agent Detail form.
-     *
-     * @param form agent detail form
-     * @return Agent Card Storage Info
-     */
-    public static AgentCardDetailInfo buildAgentCardDetailInfo(AgentDetailForm form) {
-        AgentCardDetailInfo agentCardDetailInfo = new AgentCardDetailInfo();
-        injectAgentCardInfo(agentCardDetailInfo, form);
-        agentCardDetailInfo.setRegistrationType(form.getRegistrationType());
-        return agentCardDetailInfo;
-    }
+    private static final String AGENT_INTERFACE_URL_PATTERN = "%s://%s:%s";
     
     /**
      * Build Agent Card Storage Info from Agent Detail form.
@@ -74,24 +55,6 @@ public class AgentCardUtil {
     }
     
     /**
-     * Build Agent Card Storage Info from Agent Detail form.
-     *
-     * @param form agent detail form
-     * @param isLatest is latest version
-     * @return Agent Card Version Info
-     */
-    public static AgentCardVersionInfo buildAgentCardVersionInfo(AgentDetailForm form, boolean isLatest) {
-        AgentCardVersionInfo agentCardVersionInfo = new AgentCardVersionInfo();
-        injectAgentCardInfo(agentCardVersionInfo, form);
-        agentCardVersionInfo.setRegistrationType(form.getRegistrationType());
-        if (isLatest) {
-            agentCardVersionInfo.setLatestPublishedVersion(form.getVersion());
-        }
-        agentCardVersionInfo.setVersionDetails(Collections.singletonList(buildAgentVersionDetail(form, isLatest)));
-        return agentCardVersionInfo;
-    }
-    
-    /**
      * Build Agent Card Storage Info from AgentCard.
      *
      * @param agentCard agent detail form
@@ -102,28 +65,13 @@ public class AgentCardUtil {
     public static AgentCardVersionInfo buildAgentCardVersionInfo(AgentCard agentCard, String registrationType,
             boolean isLatest) {
         AgentCardVersionInfo agentCardVersionInfo = new AgentCardVersionInfo();
-        copyAgentCardInfo(agentCardVersionInfo, agentCard);
+        copyAgentCardBasicInfo(agentCardVersionInfo, agentCard);
         agentCardVersionInfo.setRegistrationType(registrationType);
         if (isLatest) {
             agentCardVersionInfo.setLatestPublishedVersion(agentCard.getVersion());
         }
         agentCardVersionInfo.setVersionDetails(Collections.singletonList(buildAgentVersionDetail(agentCard, isLatest)));
         return agentCardVersionInfo;
-    }
-    
-    /**
-     * Build Agent version detail from Agent Detail form.
-     *
-     * @param form agent detail form
-     * @return Agent Version Detail
-     */
-    public static AgentVersionDetail buildAgentVersionDetail(AgentDetailForm form, boolean isLatest) {
-        AgentVersionDetail agentVersionDetail = new AgentVersionDetail();
-        agentVersionDetail.setCreatedAt(getCurrentTime());
-        agentVersionDetail.setUpdatedAt(getCurrentTime());
-        agentVersionDetail.setVersion(form.getVersion());
-        agentVersionDetail.setLatest(isLatest);
-        return agentVersionDetail;
     }
     
     /**
@@ -150,49 +98,69 @@ public class AgentCardUtil {
         versionDetail.setUpdatedAt(getCurrentTime());
     }
     
+    /**
+     * Build {@link AgentInterface} from service {@link Instance}.
+     *
+     * @param instance service instance.
+     * @return agent interface (endpoint)
+     */
+    public static AgentInterface buildAgentInterface(Instance instance) {
+        AgentInterface agentInterface = new AgentInterface();
+        String protocol = instance.getMetadata().get(Constants.A2A.NACOS_AGENT_ENDPOINT_PROTOCOL_KEY);
+        if (StringUtils.isEmpty(protocol)) {
+            protocol = AiConstants.A2a.A2A_ENDPOINT_DEFAULT_PROTOCOL;
+        }
+        boolean isSupportTls = Boolean.parseBoolean(
+                instance.getMetadata().get(Constants.A2A.NACOS_AGENT_ENDPOINT_SUPPORT_TLS));
+        protocol = handlerTlsIfNeeded(protocol, isSupportTls);
+        String url = String.format(AGENT_INTERFACE_URL_PATTERN, protocol, instance.getIp(), instance.getPort());
+        String path = instance.getMetadata().get(Constants.A2A.AGENT_ENDPOINT_PATH_KEY);
+        if (StringUtils.isNotBlank(path)) {
+            url += path.startsWith("/") ? path : "/" + path;
+        }
+        String query = instance.getMetadata().get(Constants.A2A.NACOS_AGENT_ENDPOINT_QUERY_KEY);
+        if (StringUtils.isNotBlank(query)) {
+            url += "?" + query;
+        }
+        agentInterface.setUrl(url);
+        agentInterface.setTransport(instance.getMetadata().get(Constants.A2A.AGENT_ENDPOINT_TRANSPORT_KEY));
+        return agentInterface;
+    }
+    
+    private static String handlerTlsIfNeeded(String protocol, boolean isSupportTls) {
+        if (AiConstants.A2a.A2A_ENDPOINT_DEFAULT_PROTOCOL.equalsIgnoreCase(protocol)) {
+            return isSupportTls ? Constants.PROTOCOL_TYPE_HTTPS : Constants.PROTOCOL_TYPE_HTTP;
+        }
+        return protocol;
+    }
+    
     private static String getCurrentTime() {
         ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Constants.RELEASE_DATE_FORMAT);
         return currentTime.format(formatter);
     }
     
-    private static void injectAgentCardInfo(AgentCard agentCard, AgentDetailForm form) {
-        agentCard.setProtocolVersion(form.getProtocolVersion());
-        agentCard.setName(form.getName());
-        agentCard.setDescription(form.getDescription());
-        agentCard.setUrl(form.getUrl());
-        agentCard.setVersion(form.getVersion());
-        agentCard.setPreferredTransport(form.getPreferredTransport());
-        agentCard.setAdditionalInterfaces(form.getAdditionalInterfaces());
-        agentCard.setIconUrl(form.getIconUrl());
-        agentCard.setProvider(form.getProvider());
-        agentCard.setCapabilities(form.getCapabilities());
-        agentCard.setSecuritySchemes(form.getSecuritySchemes());
-        agentCard.setSecurity(form.getSecurity());
-        agentCard.setDefaultInputModes(form.getDefaultInputModes());
-        agentCard.setDefaultOutputModes(form.getDefaultOutputModes());
-        agentCard.setSkills(form.getSkills());
-        agentCard.setSupportsAuthenticatedExtendedCard(form.getSupportsAuthenticatedExtendedCard());
-        agentCard.setDocumentationUrl(form.getDocumentationUrl());
-    }
-    
     private static void copyAgentCardInfo(AgentCard target, AgentCard source) {
-        target.setProtocolVersion(source.getProtocolVersion());
-        target.setName(source.getName());
-        target.setDescription(source.getDescription());
+        copyAgentCardBasicInfo(target, source);
         target.setUrl(source.getUrl());
-        target.setVersion(source.getVersion());
         target.setPreferredTransport(source.getPreferredTransport());
         target.setAdditionalInterfaces(source.getAdditionalInterfaces());
-        target.setIconUrl(source.getIconUrl());
         target.setProvider(source.getProvider());
-        target.setCapabilities(source.getCapabilities());
         target.setSecuritySchemes(source.getSecuritySchemes());
         target.setSecurity(source.getSecurity());
         target.setDefaultInputModes(source.getDefaultInputModes());
         target.setDefaultOutputModes(source.getDefaultOutputModes());
-        target.setSkills(source.getSkills());
         target.setSupportsAuthenticatedExtendedCard(source.getSupportsAuthenticatedExtendedCard());
         target.setDocumentationUrl(source.getDocumentationUrl());
+    }
+    
+    private static void copyAgentCardBasicInfo(AgentCardBasicInfo target, AgentCardBasicInfo source) {
+        target.setProtocolVersion(source.getProtocolVersion());
+        target.setName(source.getName());
+        target.setDescription(source.getDescription());
+        target.setVersion(source.getVersion());
+        target.setIconUrl(source.getIconUrl());
+        target.setCapabilities(source.getCapabilities());
+        target.setSkills(source.getSkills());
     }
 }

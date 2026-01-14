@@ -83,6 +83,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -137,7 +138,7 @@ public class ConfigControllerV3 {
     private final ConfigListenerStateDelegate configListenerStateDelegate;
     
     private final ConfigMigrateService configMigrateService;
-
+    
     /**
      * Flag to indicate if the table `config_info_beta` exists, which means the old version of table schema is used.
      */
@@ -238,11 +239,12 @@ public class ConfigControllerV3 {
      * @return the result
      * @throws NacosException the nacos exception
      */
-    @PostMapping("/metadata")
+    @PutMapping("/metadata")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     public Result<Boolean> publishConfigMetadata(HttpServletRequest request, ConfigFormV3 configForm)
             throws NacosException {
         configForm.validate();
+        String remoteIp = getRemoteIp(request);
         String configTags = configForm.getConfigTags();
         String description = configForm.getDesc();
         String dataId = configForm.getDataId();
@@ -250,6 +252,10 @@ public class ConfigControllerV3 {
         String namespaceId = NamespaceUtil.processNamespaceParameter(configForm.getNamespaceId());
         configInfoPersistService.updateConfigInfoMetadata(dataId, group, namespaceId, configTags, description);
         configMigrateService.updateConfigMetadataMigrate(dataId, group, namespaceId, configTags, description);
+        final Timestamp time = TimeUtils.getCurrentTime();
+        ConfigTraceService.logPersistenceEvent(dataId, group, namespaceId, null, time.getTime(), remoteIp,
+                ConfigTraceService.PERSISTENCE_EVENT_METADATA, ConfigTraceService.PERSISTENCE_TYPE_PUB, null);
+        ConfigChangePublisher.notifyConfigChange(new ConfigDataChangeEvent(dataId, group, namespaceId, time.getTime()));
         return Result.success(true);
     }
     

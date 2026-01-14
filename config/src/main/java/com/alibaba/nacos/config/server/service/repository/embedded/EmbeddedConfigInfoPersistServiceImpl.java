@@ -229,7 +229,10 @@ public class EmbeddedConfigInfoPersistServiceImpl implements ConfigInfoPersistSe
                         ConfigExtInfoUtil.getExtraInfoFromAdvanceInfoMap(configAdvanceInfo, srcUser));
             }
             EmbeddedStorageContextUtils.onModifyConfigInfo(configInfo, srcIp, now);
-            databaseOperate.blockUpdate(consumer);
+            boolean result = databaseOperate.blockUpdate(consumer);
+            if (!result) {
+                return new ConfigOperateResult(false);
+            }
             return getConfigInfoOperateResult(configInfo.getDataId(), configInfo.getGroup(), tenantTmp);
             
         } finally {
@@ -782,6 +785,13 @@ public class EmbeddedConfigInfoPersistServiceImpl implements ConfigInfoPersistSe
             Pair<String, String> pair = EncryptionHandler.decryptHandler(configInfo.getDataId(),
                     configInfo.getEncryptedDataKey(), configInfo.getContent());
             configInfo.setContent(pair.getSecond());
+            
+            // 查询并设置标签信息
+            List<String> configTagList = selectTagByConfig(configInfo.getDataId(), configInfo.getGroup(), configInfo.getTenant());
+            if (CollectionUtils.isNotEmpty(configTagList)) {
+                String configTagsStr = String.join(",", configTagList);
+                configInfo.setConfigTags(configTagsStr);
+            }
         }
         
         return page;
@@ -914,6 +924,13 @@ public class EmbeddedConfigInfoPersistServiceImpl implements ConfigInfoPersistSe
             Pair<String, String> pair = EncryptionHandler.decryptHandler(configInfo.getDataId(),
                     configInfo.getEncryptedDataKey(), configInfo.getContent());
             configInfo.setContent(pair.getSecond());
+            
+            // 查询并设置标签信息
+            List<String> configTagList = selectTagByConfig(configInfo.getDataId(), configInfo.getGroup(), configInfo.getTenant());
+            if (CollectionUtils.isNotEmpty(configTagList)) {
+                String configTagsStr = String.join(",", configTagList);
+                configInfo.setConfigTags(configTagsStr);
+            }
         }
         return page;
         

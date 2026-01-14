@@ -24,7 +24,6 @@ import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.common.utils.StringUtils;
 
 import java.io.Serial;
-import java.util.Objects;
 
 import static com.alibaba.nacos.api.ai.constant.AiConstants.A2a.A2A_DEFAULT_NAMESPACE;
 
@@ -40,7 +39,7 @@ public class AgentForm implements NacosForm {
     
     private String namespaceId;
     
-    private String name;
+    private String agentName;
     
     private String version;
     
@@ -49,7 +48,7 @@ public class AgentForm implements NacosForm {
     @Override
     public void validate() throws NacosApiException {
         fillDefaultNamespaceId();
-        if (StringUtils.isEmpty(name)) {
+        if (StringUtils.isEmpty(agentName)) {
             throw new NacosApiException(NacosException.INVALID_PARAM, ErrorCode.PARAMETER_MISSING,
                     "Required parameter 'name' type String is not present");
         }
@@ -69,12 +68,12 @@ public class AgentForm implements NacosForm {
         this.namespaceId = namespaceId;
     }
     
-    public String getName() {
-        return name;
+    public String getAgentName() {
+        return agentName;
     }
     
-    public void setName(String name) {
-        this.name = name;
+    public void setAgentName(String agentName) {
+        this.agentName = agentName;
     }
     
     public String getVersion() {
@@ -91,21 +90,5 @@ public class AgentForm implements NacosForm {
     
     public void setRegistrationType(String registrationType) {
         this.registrationType = registrationType;
-    }
-    
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        AgentForm agentForm = (AgentForm) o;
-        return Objects.equals(namespaceId, agentForm.namespaceId) && Objects.equals(name, agentForm.name)
-                && Objects.equals(version, agentForm.version) && Objects.equals(registrationType,
-                agentForm.registrationType);
-    }
-    
-    @Override
-    public int hashCode() {
-        return Objects.hash(namespaceId, name, version, registrationType);
     }
 }
