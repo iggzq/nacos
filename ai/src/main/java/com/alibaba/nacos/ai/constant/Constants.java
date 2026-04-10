@@ -115,6 +115,8 @@ public class Constants {
         public static final String CONSOLE_PATH = "/v3/console/ai/skills";
         
         public static final String ADMIN_PATH = "/v3/admin/ai/skills";
+
+        public static final String CLIENT_PATH = "/v3/client/ai/skills";
         
         public static final String SKILL_GROUP = "skill";
         
@@ -130,6 +132,51 @@ public class Constants {
          * Max allowed size for skill zip upload (10MB). Exceeding this will result in a clear error.
          */
         public static final long MAX_UPLOAD_ZIP_BYTES = 10L * 1024 * 1024;
+    }
+    
+    public static class AgentSpecs {
+        
+        public static final String ADMIN_PATH = "/v3/admin/ai/agentspecs";
+        
+        public static final String CLIENT_PATH = "/v3/client/ai/agentspecs";
+        
+        public static final String CONSOLE_PATH = "/v3/console/ai/agentspecs";
+        
+        public static final String AGENTSPEC_GROUP_PREFIX = "agentspec_";
+        
+        public static final String RESOURCE_TYPE_AGENTSPEC = "agentspec";
+        
+        public static final String AGENTSPEC_MAIN_DATA_ID = "manifest.json";
+        
+        /**
+         * Max allowed size for agentspec zip upload (50MB). Exceeding this will result in a clear error.
+         */
+        public static final long MAX_UPLOAD_ZIP_BYTES = 50L * 1024 * 1024;
+        
+        public static final String AGENTSPEC_STORAGE_PROVIDER_CONFIG_KEY = "nacos.ai.agentspec.storage.provider";
+        
+        public static final String SEARCH_BLUR = "blur";
+        
+        public static final String SEARCH_ACCURATE = "accurate";
+        
+        public static final String AGENTSPEC_DEFAULT_NAMESPACE = "public";
+    }
+    
+    public static class Pipeline {
+        
+        public static final String ADMIN_PATH = "/v3/admin/ai/pipelines";
+        
+        public static final String CONSOLE_PATH = "/v3/console/ai/pipelines";
+        
+        /**
+         * List pipeline executions (aligned with Skill/Prompt {@code /list} style).
+         */
+        public static final String LIST_SUBPATH = "/list";
+        
+        /**
+         * Get single pipeline execution by id (query parameter {@code pipelineId}).
+         */
+        public static final String DETAIL_SUBPATH = "/detail";
     }
     
     public static class Prompt {

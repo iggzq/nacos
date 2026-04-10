@@ -25,6 +25,7 @@ import com.alibaba.nacos.common.http.param.Query;
 import com.alibaba.nacos.common.model.RequestHttpEntity;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -32,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
@@ -42,9 +44,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -117,6 +121,60 @@ class JdkHttpClientRequestTest {
         verify(outputStream, never()).write(any(), eq(0), anyInt());
         assertEquals(connection, getActualConnection(response));
         
+    }
+    
+    @Test
+    void testExecuteDisconnectsOnOutputStreamException() throws Exception {
+        when(connection.getOutputStream()).thenThrow(new IOException("output stream error"));
+        Header header = Header.newInstance();
+        HttpClientConfig config = HttpClientConfig.builder().build();
+        RequestHttpEntity httpEntity = new RequestHttpEntity(config, header, Query.EMPTY, "body");
+        assertThrows(IOException.class, () -> httpClientRequest.execute(uri, "GET", httpEntity));
+        verify(connection).disconnect();
+    }
+    
+    @Test
+    void testExecuteDisconnectsOnConnectException() throws Exception {
+        doThrow(new IOException("connect error")).when(connection).connect();
+        Header header = Header.newInstance();
+        RequestHttpEntity httpEntity = new RequestHttpEntity(header, Query.EMPTY);
+        assertThrows(IOException.class, () -> httpClientRequest.execute(uri, "GET", httpEntity));
+        verify(connection).disconnect();
+    }
+    
+    @Test
+    void testExecuteNoDisconnectOnSuccess() throws Exception {
+        Header header = Header.newInstance();
+        RequestHttpEntity httpEntity = new RequestHttpEntity(header, Query.EMPTY);
+        httpClientRequest.execute(uri, "GET", httpEntity);
+        verify(connection, never()).disconnect();
+    }
+    
+    @Test
+    @DisplayName("setSslContext should set SSL socket factory on HttpsURLConnection")
+    void testSetSslContextShouldSetContext() throws Exception {
+        javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+        sslContext.init(null, null, new java.security.SecureRandom());
+        httpClientRequest.setSslContext(sslContext);
+    }
+    
+    @Test
+    @DisplayName("setSslContext with null should not throw")
+    void testSetSslContextWithNullShouldNotThrow() {
+        httpClientRequest.setSslContext(null);
+    }
+    
+    @Test
+    @DisplayName("replaceSslHostnameVerifier should set hostname verifier on HttpsURLConnection")
+    void testReplaceSslHostnameVerifierShouldReplace() {
+        javax.net.ssl.HostnameVerifier verifier = (hostname, session) -> true;
+        httpClientRequest.replaceSslHostnameVerifier(verifier);
+    }
+    
+    @Test
+    @DisplayName("replaceSslHostnameVerifier with null should not throw")
+    void testReplaceSslHostnameVerifierWithNullShouldNotThrow() {
+        httpClientRequest.replaceSslHostnameVerifier(null);
     }
     
     private HttpURLConnection getActualConnection(HttpClientResponse actual) throws IllegalAccessException, NoSuchFieldException {

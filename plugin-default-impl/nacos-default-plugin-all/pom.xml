@@ -44,6 +44,11 @@
         </dependency>
         <dependency>
             <groupId>com.alibaba.nacos</groupId>
+            <artifactId>nacos-default-ai-pipeline-plugin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.nacos</groupId>
             <artifactId>nacos-datasource-plugin-mysql</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -98,6 +103,8 @@
                                       tofile="${project.basedir}/../../distribution/conf/mysql-schema.sql" overwrite="true"/>
                                 <copy file="${project.basedir}/../nacos-default-datasource-plugin/nacos-datasource-plugin-postgresql/src/main/resources/META-INF/pg-schema.sql"
                                       tofile="${project.basedir}/../../distribution/conf/pg-schema.sql" overwrite="true"/>
+                                <copy file="${project.basedir}/../nacos-default-datasource-plugin/nacos-datasource-plugin-postgresql/src/main/resources/META-INF/pg-grant-nacos-readwrite.sql"
+                                      tofile="${project.basedir}/../../distribution/conf/pg-grant-nacos-readwrite.sql" overwrite="true"/>
                                 <copy file="${project.basedir}/../nacos-default-datasource-plugin/nacos-datasource-plugin-oracle/src/main/resources/META-INF/oracle-schema.sql"
                                       tofile="${project.basedir}/../../distribution/conf/oracle-schema.sql" overwrite="true"/>
                             </target>
@@ -117,11 +124,14 @@
                                            property="schema.source.mysql.exists"/>
                                 <available file="${project.basedir}/../nacos-default-datasource-plugin/nacos-datasource-plugin-postgresql/src/main/resources/META-INF/pg-schema.sql"
                                            property="schema.source.pg.exists"/>
+                                <available file="${project.basedir}/../nacos-default-datasource-plugin/nacos-datasource-plugin-postgresql/src/main/resources/META-INF/pg-grant-nacos-readwrite.sql"
+                                           property="schema.source.pg.grant.exists"/>
                                 <available file="${project.basedir}/../nacos-default-datasource-plugin/nacos-datasource-plugin-oracle/src/main/resources/META-INF/oracle-schema.sql"
                                            property="schema.source.oracle.exists"/>
                                 <fail unless="schema.source.derby.exists" message="Missing derby schema source in datasource plugin."/>
                                 <fail unless="schema.source.mysql.exists" message="Missing mysql schema source in datasource plugin."/>
                                 <fail unless="schema.source.pg.exists" message="Missing postgresql schema source in datasource plugin."/>
+                                <fail unless="schema.source.pg.grant.exists" message="Missing postgresql read/write grant script in datasource plugin."/>
                                 <fail unless="schema.source.oracle.exists" message="Missing oracle schema source in datasource plugin."/>
 
                                 <available file="${project.basedir}/../../distribution/conf/derby-schema.sql"
@@ -130,11 +140,14 @@
                                            property="schema.output.mysql.exists"/>
                                 <available file="${project.basedir}/../../distribution/conf/pg-schema.sql"
                                            property="schema.output.pg.exists"/>
+                                <available file="${project.basedir}/../../distribution/conf/pg-grant-nacos-readwrite.sql"
+                                           property="schema.output.pg.grant.exists"/>
                                 <available file="${project.basedir}/../../distribution/conf/oracle-schema.sql"
                                            property="schema.output.oracle.exists"/>
                                 <fail unless="schema.output.derby.exists" message="Missing derby schema in distribution/conf after packaging."/>
                                 <fail unless="schema.output.mysql.exists" message="Missing mysql schema in distribution/conf after packaging."/>
                                 <fail unless="schema.output.pg.exists" message="Missing postgresql schema in distribution/conf after packaging."/>
+                                <fail unless="schema.output.pg.grant.exists" message="Missing postgresql grant script in distribution/conf after packaging."/>
                                 <fail unless="schema.output.oracle.exists" message="Missing oracle schema in distribution/conf after packaging."/>
                             </target>
                         </configuration>
@@ -153,7 +166,7 @@
                         </goals>
                         <configuration>
                             <outputDirectory>${project.basedir}/../../distribution/plugins</outputDirectory>
-                            <includeArtifactIds>default-auth-plugin,nacos-oidc-auth-plugin,default-control-plugin,nacos-datasource-plugin-mysql,nacos-datasource-plugin-derby,nacos-datasource-plugin-postgresql,nacos-datasource-plugin-oracle,mysql-connector-j,derby,postgresql</includeArtifactIds>
+                            <includeArtifactIds>default-auth-plugin,nacos-oidc-auth-plugin,default-control-plugin,nacos-default-ai-pipeline-plugin,nacos-datasource-plugin-mysql,nacos-datasource-plugin-derby,nacos-datasource-plugin-postgresql,nacos-datasource-plugin-oracle,mysql-connector-j,derby,postgresql</includeArtifactIds>
                         </configuration>
                     </execution>
                 </executions>
